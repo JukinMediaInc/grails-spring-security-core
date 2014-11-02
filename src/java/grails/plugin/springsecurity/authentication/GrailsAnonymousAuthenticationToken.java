@@ -17,10 +17,10 @@ package grails.plugin.springsecurity.authentication;
 import java.util.Collections;
 import java.util.List;
 
+import grails.plugin.springsecurity.ComparableSimpleGrantedAuthority;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.SpringSecurityCoreVersion;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -35,7 +35,7 @@ public class GrailsAnonymousAuthenticationToken extends AnonymousAuthenticationT
 	public static final String USERNAME = "__grails.anonymous.user__";
 	public static final String PASSWORD = "";
 	public static final String ROLE_NAME = "ROLE_ANONYMOUS";
-	public static final GrantedAuthority ROLE = new SimpleGrantedAuthority(ROLE_NAME);
+	public static final GrantedAuthority ROLE = new ComparableSimpleGrantedAuthority(ROLE_NAME);
 	public static final List<GrantedAuthority> ROLES = Collections.singletonList(ROLE);
 	public static final UserDetails USER_DETAILS = new User(USERNAME, PASSWORD, false, false, false, false, ROLES);
 

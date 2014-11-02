@@ -14,13 +14,13 @@
  */
 package grails.plugin.springsecurity.userdetails
 
+import grails.plugin.springsecurity.ComparableSimpleGrantedAuthority
 import grails.plugin.springsecurity.SpringSecurityUtils
 
 import org.codehaus.groovy.grails.commons.GrailsApplication
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.GrantedAuthority
-import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 
@@ -39,7 +39,7 @@ class GormUserDetailsService implements GrailsUserDetailsService {
 	 * we give a user with no granted roles this one which gets past that restriction but
 	 * doesn't grant anything.
 	 */
-	static final GrantedAuthority NO_ROLE = new SimpleGrantedAuthority(SpringSecurityUtils.NO_ROLE)
+	static final GrantedAuthority NO_ROLE = new ComparableSimpleGrantedAuthority(SpringSecurityUtils.NO_ROLE)
 
 	/** Dependency injection for the application. */
 	GrailsApplication grailsApplication
@@ -99,14 +99,14 @@ class GormUserDetailsService implements GrailsUserDetailsService {
 
 		if (useGroups) {
 			if (authorityGroupPropertyName) {
-				authorities = userAuthorities.collect { it."$authorityGroupPropertyName" }.flatten().unique().collect { new SimpleGrantedAuthority(it."$authorityPropertyName") }
+				authorities = userAuthorities.collect { it."$authorityGroupPropertyName" }.flatten().unique().collect { new ComparableSimpleGrantedAuthority(it."$authorityPropertyName") }
 			}
 			else {
 				log.warn "Attempted to use group authorities, but the authority name field for the group class has not been defined."
 			}
 		}
 		else {
-			authorities = userAuthorities.collect { new SimpleGrantedAuthority(it."$authorityPropertyName") }
+			authorities = userAuthorities.collect { new ComparableSimpleGrantedAuthority(it."$authorityPropertyName") }
 		}
 		authorities ?: [NO_ROLE]
 	}

@@ -46,7 +46,6 @@ import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserCache;
@@ -169,7 +168,7 @@ public final class SpringSecurityUtils {
 		for (String auth : StringUtils.commaDelimitedListToStringArray(roleNames)) {
 			auth = auth.trim();
 			if (auth.length() > 0) {
-				requiredAuthorities.add(new SimpleGrantedAuthority(auth));
+				requiredAuthorities.add(new ComparableSimpleGrantedAuthority(auth));
 			}
 		}
 
