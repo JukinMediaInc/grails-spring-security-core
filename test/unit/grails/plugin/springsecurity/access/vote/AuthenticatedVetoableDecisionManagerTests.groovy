@@ -14,6 +14,7 @@
  */
 package grails.plugin.springsecurity.access.vote
 
+import grails.plugin.springsecurity.ComparableSimpleGrantedAuthority
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.SecurityConfig
 import org.springframework.security.access.vote.AuthenticatedVoter
