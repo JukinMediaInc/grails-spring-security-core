@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package grails.plugin.springsecurity.web.access.intercept;
 
 import grails.plugin.springsecurity.InterceptedUrl;
 import grails.plugin.springsecurity.access.vote.ClosureConfigAttribute;
+import grails.rest.Resource;
 import grails.web.UrlConverter;
 import groovy.lang.Closure;
 
@@ -32,15 +33,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 
+import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletContext;
-import org.codehaus.groovy.grails.commons.ControllerArtefactHandler;
-import org.codehaus.groovy.grails.commons.GrailsApplication;
-import org.codehaus.groovy.grails.commons.GrailsClass;
-import org.codehaus.groovy.grails.commons.GrailsControllerClass;
+
+import org.codehaus.groovy.grails.commons.*;
 import org.codehaus.groovy.grails.plugins.web.api.ResponseMimeTypesApi;
-import grails.util.Holders;
 import org.codehaus.groovy.grails.web.mapping.UrlMappingInfo;
 import org.codehaus.groovy.grails.web.mapping.UrlMappingsHolder;
 import org.codehaus.groovy.grails.web.servlet.mvc.GrailsParameterMap;
@@ -53,6 +51,7 @@ import org.springframework.security.web.access.intercept.FilterInvocationSecurit
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.ServletContextAware;
 
 /**
  * A {@link FilterInvocationSecurityMetadataSource} that uses rules defined with
@@ -62,14 +61,15 @@ import org.springframework.util.StringUtils;
  *
  * @author <a href='mailto:burt@burtbeckwith.com'>Burt Beckwith</a>
  */
-public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocationDefinition {
+public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocationDefinition implements ServletContextAware {
 
-   protected static final String SLASH = "/";
+	protected static final String SLASH = "/";
 
-	protected UrlMappingsHolder urlMappingsHolder;
 	protected GrailsApplication application;
-	protected UrlConverter grailsUrlConverter;
 	protected ResponseMimeTypesApi responseMimeTypesApi;
+	protected ServletContext servletContext;
+	protected UrlConverter grailsUrlConverter;
+	protected UrlMappingsHolder urlMappingsHolder;
 
 	@Override
 	protected String determineUrl(final FilterInvocation filterInvocation) {
@@ -91,11 +91,11 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 
 		String requestUrl = calculateUri(request);
 
+		log.trace("Requested url: {}", requestUrl);
+
 		String url = null;
 		try {
-                        javax.servlet.ServletContext servletContext = (ServletContext)grails.util.Holders.getServletContext();
-                               // servlet.ServletContext  = 
-			GrailsWebRequest grailsRequest = new GrailsWebRequest(request, response,servletContext );
+			GrailsWebRequest grailsRequest = new GrailsWebRequest(request, response, servletContext);
 			WebUtils.storeGrailsWebRequest(grailsRequest);
 
 			Map<String, Object> savedParams = copyParams(grailsRequest);
@@ -110,6 +110,7 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 
 			for (UrlMappingInfo mapping : urlInfos) {
 				if (grails23Plus && grails.plugin.springsecurity.ReflectionUtils.isRedirect(mapping)) {
+					log.trace("Mapping {} is a redirect", mapping);
 					break;
 				}
 
@@ -135,7 +136,9 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 			url = requestUrl;
 		}
 
-		return lowercaseAndStripQuerystring(url);
+		String finalUrl = lowercaseAndStripQuerystring(url);
+		log.trace("Final url is {}", finalUrl);
+		return finalUrl;
 	}
 
 	protected String findGrailsUrl(final UrlMappingInfo mapping) {
@@ -163,10 +166,10 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 		if (isController(controllerName, actionName)) {
 			return createControllerUri(controllerName, actionName);
 		}
-		
+
 		if (grails23Plus && controllerName != null) {
 			String namespace = mapping.getNamespace();
-			if(namespace != null) {
+			if (namespace != null) {
 				String fullControllerName = resolveFullControllerName(controllerName, namespace);
 				return createControllerUri(fullControllerName, actionName);
 			}
@@ -174,7 +177,7 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 
 		return null;
 	}
-	
+
 	protected String createControllerUri(String controllerName, String actionName) {
 		if (!StringUtils.hasLength(actionName) || "null".equals(actionName)) {
 			actionName = "index";
@@ -214,24 +217,29 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 	 * @param staticRules data from the controllerAnnotations.staticRules config attribute
 	 * @param mappingsHolder mapping holder
 	 * @param controllerClasses all controllers
+	 * @param domainClasses all domain classes
 	 */
 	public void initialize(final Object staticRules,
-			final UrlMappingsHolder mappingsHolder, final GrailsClass[] controllerClasses) {
+			final UrlMappingsHolder mappingsHolder, final GrailsClass[] controllerClasses, final GrailsClass[] domainClasses) {
 
 		Assert.notNull(staticRules, "staticRules map is required");
 		Assert.notNull(mappingsHolder, "urlMappingsHolder is required");
+
+		resetConfigs();
+
+		urlMappingsHolder = mappingsHolder;
 
 		Map<String, List<InterceptedUrl>> actionRoleMap = new LinkedHashMap<String, List<InterceptedUrl>>();
 		List<InterceptedUrl> classRoleMap = new ArrayList<InterceptedUrl>();
 		Map<String, List<InterceptedUrl>> actionClosureMap = new LinkedHashMap<String, List<InterceptedUrl>>();
 		List<InterceptedUrl> classClosureMap = new ArrayList<InterceptedUrl>();
 
-		resetConfigs();
-
-		urlMappingsHolder = mappingsHolder;
-
 		for (GrailsClass controllerClass : controllerClasses) {
 			findControllerAnnotations((GrailsControllerClass)controllerClass, actionRoleMap, classRoleMap, actionClosureMap, classClosureMap);
+		}
+
+		for (GrailsClass domainClass : domainClasses) {
+			findDomainAnnotations((GrailsDomainClass) domainClass, actionRoleMap, classRoleMap, actionClosureMap, classClosureMap);
 		}
 
 		compileStaticRules(staticRules);
@@ -241,7 +249,9 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 		compileClassMap(classRoleMap);
 
 		if (log.isTraceEnabled()) {
-			log.trace("configs: {}", getConfigAttributeMap());
+			for (InterceptedUrl url : getConfigAttributeMap()) {
+				log.trace("URL: {} | Roles: {}", url.getPattern(), url.getConfigAttributes());
+			}
 		}
 	}
 
@@ -372,22 +382,29 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 
 			sb.append("/**");
 			patterns.add(sb.toString());
+
+			log.trace("Patterns generated for controller '{}' action '{}' -> {}",
+					new Object[] { controllerNameOrPattern, actionName, patterns });
 		}
 
 		return patterns;
 	}
 
 	protected void doStoreMapping(final String fullPattern, final HttpMethod method, final Collection<ConfigAttribute> configAttributes) {
-
 		String key = fullPattern.toString().toLowerCase();
 		InterceptedUrl replaced = storeMapping(key, method, configAttributes);
 		if (replaced != null) {
-			log.warn("replaced rule for '" + key + "' with tokens " + replaced.getConfigAttributes() +
-					" with tokens " + configAttributes);
+			log.warn("replaced rule for '{}' with tokens {} with tokens {}",
+					new Object[] { key, replaced.getConfigAttributes(), configAttributes });
+		}
+		else {
+			log.trace("Storing ConfigAttributes {} for '{}' and HttpMethod {}",
+					new Object[] { key, configAttributes, method });
 		}
 	}
 
-	protected void findControllerAnnotations(final GrailsControllerClass controllerClass,
+	protected void findControllerAnnotations(
+			final GrailsControllerClass controllerClass,
 			final Map<String, List<InterceptedUrl>> actionRoleMap,
 			final List<InterceptedUrl> classRoleMap,
 			final Map<String, List<InterceptedUrl>> actionClosureMap,
@@ -396,21 +413,46 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 		Class<?> clazz = controllerClass.getClazz();
 		String controllerName = resolveFullControllerName(controllerClass);
 
+		findAnnotations(actionRoleMap, classRoleMap, actionClosureMap, classClosureMap, clazz, controllerName);
+	}
+
+	protected void findDomainAnnotations(
+			final GrailsDomainClass domainClass,
+			final Map<String, List<InterceptedUrl>> actionRoleMap,
+			final List<InterceptedUrl> classRoleMap,
+			final Map<String, List<InterceptedUrl>> actionClosureMap,
+			final List<InterceptedUrl> classClosureMap) {
+
+		Class<?> clazz = domainClass.getClazz();
+
+		Resource resource = clazz.getAnnotation(Resource.class);
+		if (resource != null) {
+			String controllerName = clazz.getSimpleName().toLowerCase();
+			findAnnotations(actionRoleMap, classRoleMap, actionClosureMap, classClosureMap, clazz, controllerName);
+		}
+	}
+
+	private void findAnnotations(Map<String, List<InterceptedUrl>> actionRoleMap, List<InterceptedUrl> classRoleMap, Map<String, List<InterceptedUrl>> actionClosureMap, List<InterceptedUrl> classClosureMap, Class<?> clazz, String controllerName) {
 		Annotation annotation = clazz.getAnnotation(org.springframework.security.access.annotation.Secured.class);
 		if (annotation == null) {
 			annotation = clazz.getAnnotation(grails.plugin.springsecurity.annotation.Secured.class);
 			if (annotation != null) {
 				Class<?> closureClass = findClosureClass((grails.plugin.springsecurity.annotation.Secured)annotation);
 				if (closureClass == null) {
-					classRoleMap.add(new InterceptedUrl(controllerName, getValue(annotation), getHttpMethod(annotation)));
+					Collection<String> values = getValue(annotation);
+					log.trace("found class-scope annotation in {} with value(s) {}", clazz.getName(), values);
+					classRoleMap.add(new InterceptedUrl(controllerName, values, getHttpMethod(annotation)));
 				}
 				else {
+					log.trace("found class-scope annotation with a closure in {}", clazz.getName());
 					classClosureMap.add(new InterceptedUrl(controllerName, closureClass, getHttpMethod(annotation)));
 				}
 			}
 		}
 		else {
-			classRoleMap.add(new InterceptedUrl(controllerName, getValue(annotation), null));
+			Collection<String> values = getValue(annotation);
+			log.trace("found class-scope annotation in {} with value(s) {}", clazz.getName(), values);
+			classRoleMap.add(new InterceptedUrl(controllerName, values, null));
 		}
 
 		List<InterceptedUrl> annotatedActionNames = findActionRoles(clazz);
@@ -424,8 +466,7 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 		}
 	}
 
-	protected String resolveFullControllerName(
-			final GrailsControllerClass controllerClass) {
+	protected String resolveFullControllerName(final GrailsControllerClass controllerClass) {
 		String controllerName = controllerClass.getName();
 		String namespace = null;
 		if (grails23Plus) {
@@ -437,23 +478,27 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 		return resolveFullControllerName(grailsUrlConverter.toUrlElement(controllerName), namespace);
 	}
 
-	protected String resolveFullControllerName(String controllerNameInUrlFormat,
-			String namespaceInUrlFormat) {
+	protected String resolveFullControllerName(String controllerNameInUrlFormat, String namespaceInUrlFormat) {
 		StringBuilder fullControllerName = new StringBuilder();
 		if (namespaceInUrlFormat != null) {
 			fullControllerName.append(namespaceInUrlFormat).append(":");
 		}
 		fullControllerName.append(controllerNameInUrlFormat);
+		log.trace("Resolved full controller name for controller '{}' and namespace '{}' as '{}'",
+				new Object[] { controllerNameInUrlFormat, namespaceInUrlFormat, fullControllerName });
 		return fullControllerName.toString();
 	}
 
 	protected List<InterceptedUrl> findActionRoles(final Class<?> clazz) {
+		log.trace("finding @Secured annotations for actions in {}", clazz.getName());
 		List<InterceptedUrl> actionRoles = new ArrayList<InterceptedUrl>();
-		for (Method method : clazz.getDeclaredMethods()) {
+		for (Method method : clazz.getMethods()) {
 			Annotation annotation = findSecuredAnnotation(method);
 			if (annotation != null) {
 				Collection<String> values = getValue(annotation);
 				if (!values.isEmpty()) {
+					log.trace("found annotated method {} in {} with value(s) {}",
+							new Object[] { method.getName(), clazz.getName(), values });
 					actionRoles.add(new InterceptedUrl(grailsUrlConverter.toUrlElement(method.getName()), values, getHttpMethod(annotation)));
 				}
 			}
@@ -463,10 +508,13 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 
 	protected List<InterceptedUrl> findActionClosures(final Class<?> clazz) {
 		List<InterceptedUrl> actionClosures = new ArrayList<InterceptedUrl>();
-		for (Method method : clazz.getDeclaredMethods()) {
-			grails.plugin.springsecurity.annotation.Secured annotation = method.getAnnotation(grails.plugin.springsecurity.annotation.Secured.class);
+		for (Method method : clazz.getMethods()) {
+			grails.plugin.springsecurity.annotation.Secured annotation = method.getAnnotation(
+					grails.plugin.springsecurity.annotation.Secured.class);
 			if (annotation != null && annotation.closure() != grails.plugin.springsecurity.annotation.Secured.class) {
-				actionClosures.add(new InterceptedUrl(grailsUrlConverter.toUrlElement(method.getName()), annotation.closure(), getHttpMethod(annotation)));
+				log.trace("found annotation with a closure on method {} in {}", method.getName(), clazz.getName());
+				actionClosures.add(new InterceptedUrl(grailsUrlConverter.toUrlElement(
+						method.getName()), annotation.closure(), getHttpMethod(annotation)));
 			}
 		}
 		return actionClosures;
@@ -478,16 +526,11 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 	}
 
 	protected Annotation findSecuredAnnotation(final AccessibleObject annotatedTarget) {
-		Annotation annotation; 
-		annotation = annotatedTarget.getAnnotation(grails.plugin.springsecurity.annotation.Secured.class);
+		Annotation annotation = annotatedTarget.getAnnotation(grails.plugin.springsecurity.annotation.Secured.class);
 		if (annotation != null) {
 			return annotation;
 		}
-		annotation = annotatedTarget.getAnnotation(org.springframework.security.access.annotation.Secured.class);
-		if (annotation != null) {
-			return annotation;
-		}
-		return null;
+		return annotatedTarget.getAnnotation(org.springframework.security.access.annotation.Secured.class);
 	}
 
 	protected Collection<String> getValue(final Annotation annotation) {
@@ -534,5 +577,9 @@ public class AnnotationFilterInvocationDefinition extends AbstractFilterInvocati
 	 */
 	public void setResponseMimeTypesApi(ResponseMimeTypesApi api) {
 		responseMimeTypesApi = api;
+	}
+
+	public void setServletContext(ServletContext sc) {
+		servletContext = sc;
 	}
 }

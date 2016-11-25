@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@ import javax.servlet.http.HttpSession;
 
 import org.apache.commons.lang.StringEscapeUtils;
 import org.codehaus.groovy.grails.commons.GrailsApplication;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -68,6 +70,8 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
  */
 public final class SpringSecurityUtils {
 
+	private static final Logger LOG = LoggerFactory.getLogger(SpringSecurityUtils.class);
+
 	private static ConfigObject _securityConfig;
 	private static GrailsApplication application;
 
@@ -82,10 +86,10 @@ public final class SpringSecurityUtils {
 	public static final String SAVED_REQUEST = "SPRING_SECURITY_SAVED_REQUEST"; // TODO use requestCache
 
 	// UsernamePasswordAuthenticationFilter.SPRING_SECURITY_LAST_USERNAME_KEY is deprecated
-   public static final String SPRING_SECURITY_LAST_USERNAME_KEY = "SPRING_SECURITY_LAST_USERNAME";
+	public static final String SPRING_SECURITY_LAST_USERNAME_KEY = "SPRING_SECURITY_LAST_USERNAME";
 
-   // AbstractAuthenticationTargetUrlRequestHandler.DEFAULT_TARGET_PARAMETER was removed
-   public static final String DEFAULT_TARGET_PARAMETER = "spring-security-redirect";
+	// AbstractAuthenticationTargetUrlRequestHandler.DEFAULT_TARGET_PARAMETER was removed
+	public static final String DEFAULT_TARGET_PARAMETER = "spring-security-redirect";
 
 	/**
 	 * Default value for the name of the Ajax header.
@@ -150,7 +154,7 @@ public final class SpringSecurityUtils {
 		// remove the fake role if it's there
 		Collection<GrantedAuthority> copy = new ArrayList<GrantedAuthority>(authorities);
 		for (Iterator<GrantedAuthority> iter = copy.iterator(); iter.hasNext();) {
-			if (iter.next().getAuthority().equals(NO_ROLE)) {
+			if (NO_ROLE.equals(iter.next().getAuthority())) {
 				iter.remove();
 			}
 		}
@@ -238,6 +242,7 @@ public final class SpringSecurityUtils {
 	 */
 	public static synchronized ConfigObject getSecurityConfig() {
 		if (_securityConfig == null) {
+			LOG.trace("Building security config since there is no cached config");
 			reloadSecurityConfig();
 		}
 
@@ -257,6 +262,7 @@ public final class SpringSecurityUtils {
 	 */
 	public static synchronized void resetSecurityConfig() {
 		_securityConfig = null;
+		LOG.trace("reset security config");
 	}
 
 	/**
@@ -265,6 +271,7 @@ public final class SpringSecurityUtils {
 	 */
 	public static synchronized void loadSecondaryConfig(final String className) {
 		mergeConfig(getSecurityConfig(), className);
+		LOG.trace("loaded secondary config {}", className);
 	}
 
 	/**
@@ -272,6 +279,7 @@ public final class SpringSecurityUtils {
 	 */
 	public static void reloadSecurityConfig() {
 		mergeConfig(ReflectionUtils.getSecurityConfig(), "DefaultSecurityConfig");
+		LOG.trace("reloaded security config");
 	}
 
 	/**
@@ -283,8 +291,10 @@ public final class SpringSecurityUtils {
 
 		String ajaxHeaderName = (String)ReflectionUtils.getConfigProperty("ajaxHeader");
 
+		String xmlHttpRequest = "XMLHttpRequest";
+
 		// check the current request's headers
-		if ("XMLHttpRequest".equals(request.getHeader(ajaxHeaderName))) {
+		if (xmlHttpRequest.equals(request.getHeader(ajaxHeaderName))) {
 			return true;
 		}
 
@@ -312,7 +322,7 @@ public final class SpringSecurityUtils {
 		if (httpSession != null) {
 			SavedRequest savedRequest = (SavedRequest)httpSession.getAttribute(SAVED_REQUEST);
 			if (savedRequest != null) {
-				return !savedRequest.getHeaderValues(ajaxHeaderName).isEmpty();
+				return savedRequest.getHeaderValues(ajaxHeaderName).contains(xmlHttpRequest);
 			}
 		}
 
@@ -328,6 +338,7 @@ public final class SpringSecurityUtils {
 	 */
 	public static void registerProvider(final String beanName) {
 		providerNames.add(0, beanName);
+		LOG.trace("Registered bean '{}' as a provider", beanName);
 	}
 
 	/**
@@ -347,6 +358,7 @@ public final class SpringSecurityUtils {
 	 */
 	public static void registerLogoutHandler(final String beanName) {
 		logoutHandlerNames.add(0, beanName);
+		LOG.trace("Registered bean '{}' as a logout handler", beanName);
 	}
 
 	/**
@@ -366,6 +378,7 @@ public final class SpringSecurityUtils {
 	 */
 	public static void registerAfterInvocationProvider(final String beanName) {
 		afterInvocationManagerProviderNames.add(0, beanName);
+		LOG.trace("Registered bean '{}' as an AfterInvocationProvider", beanName);
 	}
 
 	/**
@@ -385,6 +398,7 @@ public final class SpringSecurityUtils {
 	 */
 	public static void registerVoter(final String beanName) {
 		voterNames.add(0, beanName);
+		LOG.trace("Registered bean '{}' as a voter", beanName);
 	}
 
 	/**
@@ -425,6 +439,8 @@ public final class SpringSecurityUtils {
 					"' is already registered in that position");
 		}
 		getOrderedFilters().put(order, beanName);
+
+		LOG.trace("Registered bean '{}' as a filter at order {}", beanName, order);
 	}
 
 	/**
@@ -479,6 +495,9 @@ public final class SpringSecurityUtils {
 				filterChainMap);
 
 		filterChain.setFilterChainMap(fixedFilterChainMap);
+
+		LOG.trace("Client registered bean '{}' as a filter at order {}", beanName, order);
+		LOG.trace("Updated filter chain: {}", fixedFilterChainMap);
 	}
 
 	private static FilterChainProxy getFilterChainProxy() {
@@ -709,7 +728,6 @@ public final class SpringSecurityUtils {
 	 * @param secondary new default values
 	 * @return the merged configs
 	 */
-	@SuppressWarnings("unchecked")
 	private static ConfigObject mergeConfig(final ConfigObject currentConfig, final ConfigObject secondary) {
 		ConfigObject config = new ConfigObject();
 		if (secondary == null) {

@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,12 +48,7 @@ import org.springframework.util.StringUtils;
  */
 public abstract class AbstractFilterInvocationDefinition implements FilterInvocationSecurityMetadataSource, InitializingBean {
 
-	protected static final Collection<ConfigAttribute> DENY;
-	static {
-		Collection<ConfigAttribute> list = new ArrayList<ConfigAttribute>(1);
-		list.add(new SecurityConfig("_DENY_"));
-		DENY = Collections.unmodifiableCollection(list);
-	}
+	protected static final Collection<ConfigAttribute> DENY = Collections.singletonList((ConfigAttribute)new SecurityConfig("_DENY_"));
 
 	protected boolean rejectIfNoRule;
 	protected RoleVoter roleVoter;
@@ -74,16 +69,14 @@ public abstract class AbstractFilterInvocationDefinition implements FilterInvoca
 		// override if necessary
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.security.access.SecurityMetadataSource#getAttributes(java.lang.Object)
-	 */
 	public Collection<ConfigAttribute> getAttributes(Object object) throws IllegalArgumentException {
-		Assert.isTrue(object != null && supports(object.getClass()), "Object must be a FilterInvocation");
+		Assert.notNull(object, "Object must be a FilterInvocation");
+		Assert.isTrue(supports(object.getClass()), "Object must be a FilterInvocation");
 
 		FilterInvocation filterInvocation = (FilterInvocation)object;
 
 		String url = determineUrl(filterInvocation);
+		log.trace("getAttributes(): url is {} for FilterInvocation {}", url, filterInvocation);
 
 		Collection<ConfigAttribute> configAttributes;
 		try {
@@ -97,10 +90,12 @@ public abstract class AbstractFilterInvocationDefinition implements FilterInvoca
 		}
 
 		if ((configAttributes == null || configAttributes.isEmpty()) && rejectIfNoRule) {
+			log.trace("Returning DENY, rejectIfNoRule is true and no ConfigAttributes");
 			// return something that cannot be valid; this will cause the voters to abstain or deny
 			return DENY;
 		}
 
+		log.trace("ConfigAttributes are {}", configAttributes);
 		return configAttributes;
 	}
 
@@ -173,18 +168,10 @@ public abstract class AbstractFilterInvocationDefinition implements FilterInvoca
 		// override if necessary
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.security.access.SecurityMetadataSource#supports(java.lang.Class)
-	 */
 	public boolean supports(Class<?> clazz) {
 		return FilterInvocation.class.isAssignableFrom(clazz);
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.security.access.SecurityMetadataSource#getAllConfigAttributes()
-	 */
 	public Collection<ConfigAttribute> getAllConfigAttributes() {
 		try {
 			initialize();
@@ -274,12 +261,16 @@ public abstract class AbstractFilterInvocationDefinition implements FilterInvoca
 				break;
 			}
 		}
-		
-		if(existing != null) {
+
+		if (existing != null) {
+			log.trace("Replacing existing mapping {}", existing);
 			compiled.remove(existing);
 		}
 
-		compiled.add(new InterceptedUrl(pattern, method, configAttributes));
+		InterceptedUrl mapping = new InterceptedUrl(pattern, method, configAttributes);
+		compiled.add(mapping);
+		log.trace("Stored mapping {} for pattern '{}', HttpMethod {}, ConfigAttributes {}",
+				new Object[] { mapping, pattern, method, configAttributes });
 
 		return existing;
 	}

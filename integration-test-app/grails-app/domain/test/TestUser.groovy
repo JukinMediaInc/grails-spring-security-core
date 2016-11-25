@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@ package test
 /**
  * @author <a href='mailto:burt@burtbeckwith.com'>Burt Beckwith</a>
  */
-class TestUser {
+class TestUser implements Serializable {
+
+	private static final long serialVersionUID = 1
 
 	String loginName
 	String passwrrd
@@ -26,8 +28,29 @@ class TestUser {
 	boolean accountLocked
 	boolean passwordExpired
 
-	Set<TestRole> getRoles() { TestUserRole.findAllByUser(this).collect { it.role } }
-	Set<TestRoleGroup> getGroups() { TestUserRoleGroup.findAllByUser(this).collect { it.roleGroup } }
+	TestUser(String loginName, String passwrrd) {
+		this()
+		this.loginName = loginName
+		this.passwrrd = passwrrd
+	}
+
+	@Override
+	int hashCode() {
+		loginName?.hashCode() ?: 0
+	}
+
+	@Override
+	boolean equals(other) {
+		is(other) || (other instanceof TestUser && other.loginName == loginName)
+	}
+
+	@Override
+	String toString() {
+		loginName
+	}
+
+	Set<TestRole> getRoles() { TestUserRole.findAllByUser(this)*.role }
+	Set<TestRoleGroup> getGroups() { TestUserRoleGroup.findAllByUser(this)*.roleGroup }
 	Collection<String> getRoleNames() { roles*.auth }
 
 	static constraints = {

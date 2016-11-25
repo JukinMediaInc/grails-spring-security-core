@@ -11,20 +11,24 @@ When an accessor returns @true@ for @accountExpired@, @accountLocked@, or @passw
 
 {table}
 *Accessor* | *Property* | *Exception*
-@isAccountNonExpired()@ | @accountExpired@ | [AccountExpiredException|http://docs.spring.io/spring-security/site/docs/3.2.x/apidocs/org/springframework/security/authentication/AccountExpiredException.html]
-@isAccountNonLocked()@ | @accountLocked@ | [LockedException|http://docs.spring.io/spring-security/site/docs/3.2.x/apidocs/org/springframework/security/authentication/LockedException.html]
-@isCredentialsNonExpired()@ | @passwordExpired@ | [CredentialsExpiredException|http://docs.spring.io/spring-security/site/docs/3.2.x/apidocs/org/springframework/security/authentication/CredentialsExpiredException.html]
-@isEnabled()@ | @enabled@ | [DisabledException|http://docs.spring.io/spring-security/site/docs/3.2.x/apidocs/org/springframework/security/authentication/DisabledException.html]
+@isAccountNonExpired()@ | @accountExpired@ | [AccountExpiredException|https://docs.spring.io/spring-security/site/docs/3.2.x/apidocs/org/springframework/security/authentication/AccountExpiredException.html]
+@isAccountNonLocked()@ | @accountLocked@ | [LockedException|https://docs.spring.io/spring-security/site/docs/3.2.x/apidocs/org/springframework/security/authentication/LockedException.html]
+@isCredentialsNonExpired()@ | @passwordExpired@ | [CredentialsExpiredException|https://docs.spring.io/spring-security/site/docs/3.2.x/apidocs/org/springframework/security/authentication/CredentialsExpiredException.html]
+@isEnabled()@ | @enabled@ | [DisabledException|https://docs.spring.io/spring-security/site/docs/3.2.x/apidocs/org/springframework/security/authentication/DisabledException.html]
 {table}
 
 You can configure an exception mapping in @Config.groovy@ to associate a URL to any or all of these exceptions to determine where to redirect after a failure, for example:
 
 {code}
 grails.plugin.springsecurity.failureHandler.exceptionMappings = [
-   'org.springframework.security.authentication.LockedException':             '/user/accountLocked',
-   'org.springframework.security.authentication.DisabledException':           '/user/accountDisabled',
-   'org.springframework.security.authentication.AccountExpiredException':     '/user/accountExpired',
-   'org.springframework.security.authentication.CredentialsExpiredException': '/user/passwordExpired'
+   'org.springframework.security.authentication.LockedException':
+      '/user/accountLocked',
+   'org.springframework.security.authentication.DisabledException':
+      '/user/accountDisabled',
+   'org.springframework.security.authentication.AccountExpiredException':
+      '/user/accountExpired',
+   'org.springframework.security.authentication.CredentialsExpiredException':
+      '/user/passwordExpired'
 ]
 {code}
 
@@ -45,7 +49,7 @@ You can customize these messages by setting the corresponding property in @Confi
 grails.plugin.springsecurity.errors.login.locked = "None shall pass."
 {code}
 
-You can use this functionality to manually lock a user's account or expire the password, but you can automate the process. For example, use the [Quartz plugin|http://grails.org/plugin/quartz] to periodically expire everyone's password and force them to go to a page where they update it. Keep track of the date when users change their passwords and use a Quartz job to expire their passwords once the password is older than a fixed max age.
+You can use this functionality to manually lock a user's account or expire the password, but you can automate the process. For example, use the [Quartz plugin|https://grails.org/plugin/quartz] to periodically expire everyone's password and force them to go to a page where they update it. Keep track of the date when users change their passwords and use a Quartz job to expire their passwords once the password is older than a fixed max age.
 
 Here's an example for a password expired workflow. You'd need a simple action to display a password reset form (similar to the login form):
 
@@ -64,7 +68,8 @@ and the form would look something like this:
       <div class='login_message'>${flash.message}</div>
       </g:if>
       <div class='fheader'>Please update your password..</div>
-      <g:form action='updatePassword' id='passwordResetForm' class='cssform' autocomplete='off'>
+      <g:form action='updatePassword' id='passwordResetForm'
+              class='cssform' autocomplete='off'>
          <p>
             <label for='username'>Username</label>
             <span class='text_'>${username}</span>
@@ -105,22 +110,30 @@ def updatePassword() {
    String password = params.password
    String newPassword = params.password_new
    String newPassword2 = params.password_new_2
-   if (!password || !newPassword || !newPassword2 || newPassword != newPassword2) {
-      flash.message = 'Please enter your current password and a valid new password'
-      render view: 'passwordExpired', model: [username: session['SPRING_SECURITY_LAST_USERNAME']]
+   if (!password || !newPassword || !newPassword2 ||
+        newPassword != newPassword2) {
+      flash.message =
+         'Please enter your current password and a valid new password'
+      render view: 'passwordExpired',
+             model: [username: session['SPRING_SECURITY_LAST_USERNAME']]
       return
    }
 
    User user = User.findByUsername(username)
-   if (!passwordEncoder.isPasswordValid(user.password, password, null /*salt*/)) {
+   if (!passwordEncoder.isPasswordValid(user.password,
+         password, null /*salt*/)) {
       flash.message = 'Current password is incorrect'
-      render view: 'passwordExpired', model: [username: session['SPRING_SECURITY_LAST_USERNAME']]
+      render view: 'passwordExpired',
+             model: [username: session['SPRING_SECURITY_LAST_USERNAME']]
       return
    }
 
-   if (passwordEncoder.isPasswordValid(user.password, newPassword, null /*salt*/)) {
-      flash.message = 'Please choose a different password from your current one'
-      render view: 'passwordExpired', model: [username: session['SPRING_SECURITY_LAST_USERNAME']]
+   if (passwordEncoder.isPasswordValid(user.password, newPassword,
+         null /*salt*/)) {
+      flash.message =
+         'Please choose a different password from your current one'
+      render view: 'passwordExpired',
+             model: [username: session['SPRING_SECURITY_LAST_USERNAME']]
       return
    }
 
@@ -142,7 +155,7 @@ Here is a sample Quartz job that demonstrates how to find and disable users with
 {code}
 package com.mycompany.myapp
 
-class ExpirePasswordsJob  {
+class ExpirePasswordsJob {
 
    static triggers = {
       cron name: 'myTrigger', cronExpression: '0 0 0 * * ?' // midnight daily
@@ -157,7 +170,8 @@ class ExpirePasswordsJob  {
             [cutoffDate: new Date() - 180])
 
       for (user in users) {
-         // flush each separately so one failure doesn't rollback all of the others
+         // flush each separately so one failure
+         // doesn't rollback all of the others
          try {
             user.passwordExpired = true
             user.save(flush: true)

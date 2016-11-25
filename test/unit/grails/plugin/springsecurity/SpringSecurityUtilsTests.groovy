@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import org.springframework.context.ApplicationContext
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl
 import org.springframework.security.core.GrantedAuthority
-import org.springframework.security.core.authority.GrantedAuthorityImpl
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.web.PortResolverImpl
 import org.springframework.security.web.savedrequest.DefaultSavedRequest
@@ -32,13 +31,9 @@ import org.springframework.security.web.savedrequest.DefaultSavedRequest
  */
 class SpringSecurityUtilsTests extends GroovyTestCase {
 
-	private final application = new FakeApplication()
+	private application = new FakeApplication()
 	private request = new MockHttpServletRequest()
 
-	/**
-	 * {@inheritDoc}
-	 * @see junit.framework.TestCase#setUp()
-	 */
 	@Override
 	protected void setUp() {
 		super.setUp()
@@ -54,7 +49,7 @@ class SpringSecurityUtilsTests extends GroovyTestCase {
 		def roleNames = []
 		def authorities = []
 		(1..10).each { i ->
-			String name = "role${i}"
+			String name = "role$i"
 			roleNames << name
 			authorities << new SimpleGrantedAuthority(name)
 		}
@@ -79,7 +74,7 @@ class SpringSecurityUtilsTests extends GroovyTestCase {
 	 * Test getPrincipalAuthorities() when not authenticated.
 	 */
 	void testGetPrincipalAuthoritiesNoAuth() {
-		assertTrue SpringSecurityUtils.getPrincipalAuthorities().empty
+		assert !SpringSecurityUtils.principalAuthorities
 	}
 
 	/**
@@ -87,21 +82,18 @@ class SpringSecurityUtilsTests extends GroovyTestCase {
 	 */
 	void testGetPrincipalAuthoritiesNoRoles() {
 		SecurityTestUtils.authenticate()
-		assertTrue SpringSecurityUtils.getPrincipalAuthorities().empty
+		assert !SpringSecurityUtils.principalAuthorities
 	}
 
 	/**
 	 * Test getPrincipalAuthorities().
 	 */
 	void testGetPrincipalAuthorities() {
-		def authorities = []
-		(1..10).each { i ->
-			authorities << new SimpleGrantedAuthority("role${i}")
-		}
+		def authorities = (1..10).collect { new SimpleGrantedAuthority("role$it") }
 
-		SecurityTestUtils.authenticate(null, null, authorities)
+		SecurityTestUtils.authenticate null, null, authorities
 
-		assertEquals authorities, SpringSecurityUtils.getPrincipalAuthorities()
+		assert authorities == SpringSecurityUtils.principalAuthorities
 	}
 
 	/**
@@ -111,7 +103,7 @@ class SpringSecurityUtilsTests extends GroovyTestCase {
 		String roleNames = 'role1,role2,role3'
 		def roles = SpringSecurityUtils.parseAuthoritiesString(roleNames)
 
-		assertEquals 3, roles.size()
+		assert 3 == roles.size()
 		def expected = ['role1', 'role2', 'role3']
 		def actual = roles.collect { authority -> authority.authority }
 		assertSameContents expected, actual
@@ -131,23 +123,29 @@ class SpringSecurityUtilsTests extends GroovyTestCase {
 	}
 
 	void testIsAjaxUsingParameterFalse() {
-		assertFalse SpringSecurityUtils.isAjax(request)
+		assert !SpringSecurityUtils.isAjax(request)
 	}
 
 	void testIsAjaxUsingParameterTrue() {
 		request.setParameter('ajax', 'true')
 
-		assertTrue SpringSecurityUtils.isAjax(request)
+		assert SpringSecurityUtils.isAjax(request)
 	}
 
 	void testIsAjaxUsingHeaderFalse() {
-		assertFalse SpringSecurityUtils.isAjax(request)
+		assert !SpringSecurityUtils.isAjax(request)
+	}
+
+	void testIsAjaxUsingHeaderXmlHttpRequest() {
+		request.addHeader('X-Requested-With', 'XMLHttpRequest')
+
+		assert SpringSecurityUtils.isAjax(request)
 	}
 
 	void testIsAjaxUsingHeaderTrue() {
-		request.addHeader('X-Requested-With', 'XMLHttpRequest')
+		request.addHeader('X-Requested-With', 'true')
 
-		assertTrue SpringSecurityUtils.isAjax(request)
+		assert !SpringSecurityUtils.isAjax(request)
 	}
 
 	void testIsAjaxUsingSavedRequestFalse() {
@@ -155,123 +153,130 @@ class SpringSecurityUtilsTests extends GroovyTestCase {
 		def savedRequest = new DefaultSavedRequest(request, new PortResolverImpl())
 		request.session.setAttribute(SpringSecurityUtils.SAVED_REQUEST, savedRequest)
 
-		assertFalse SpringSecurityUtils.isAjax(request)
+		assert !SpringSecurityUtils.isAjax(request)
 	}
 
 	void testIsAjaxUsingSavedRequestTrue() {
-
 		request.addHeader 'X-Requested-With', 'true'
 		def savedRequest = new DefaultSavedRequest(request, new PortResolverImpl())
 		request.session.setAttribute(SpringSecurityUtils.SAVED_REQUEST, savedRequest)
 
-		assertTrue SpringSecurityUtils.isAjax(request)
+		assert !SpringSecurityUtils.isAjax(request)
+	}
+
+	void testIsAjaxUsingSavedRequestXmlHttpRequest() {
+		request.addHeader 'X-Requested-With', 'XMLHttpRequest'
+		def savedRequest = new DefaultSavedRequest(request, new PortResolverImpl())
+		request.session.setAttribute(SpringSecurityUtils.SAVED_REQUEST, savedRequest)
+
+		assert SpringSecurityUtils.isAjax(request)
 	}
 
 	void testIfAllGranted() {
 		initRoleHierarchy ''
 		SecurityTestUtils.authenticate(['ROLE_1', 'ROLE_2'], true)
 
-		assertTrue SpringSecurityUtils.ifAllGranted('ROLE_1')
-		assertTrue SpringSecurityUtils.ifAllGranted('ROLE_2')
-		assertTrue SpringSecurityUtils.ifAllGranted('ROLE_1,ROLE_2')
-		assertFalse SpringSecurityUtils.ifAllGranted('ROLE_1,ROLE_2,ROLE_3')
-		assertFalse SpringSecurityUtils.ifAllGranted('ROLE_3')
+		assert SpringSecurityUtils.ifAllGranted('ROLE_1')
+		assert SpringSecurityUtils.ifAllGranted('ROLE_2')
+		assert SpringSecurityUtils.ifAllGranted('ROLE_1,ROLE_2')
+		assert !SpringSecurityUtils.ifAllGranted('ROLE_1,ROLE_2,ROLE_3')
+		assert !SpringSecurityUtils.ifAllGranted('ROLE_3')
 
-		assertTrue SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_2')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2')])
-		assertFalse SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2'), new SimpleGrantedAuthority('ROLE_3')])
-		assertFalse SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_3')])
+		assert SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1')])
+		assert SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_2')])
+		assert SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2')])
+		assert !SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2'), new SimpleGrantedAuthority('ROLE_3')])
+		assert !SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_3')])
 
-		assertTrue SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_1')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_2')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_1'), new GrantedAuthorityImpl('ROLE_2')])
-		assertFalse SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_1'), new GrantedAuthorityImpl('ROLE_2'), new GrantedAuthorityImpl('ROLE_3')])
-		assertFalse SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_3')])
+		assert SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_1')])
+		assert SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_2')])
+		assert SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_1'), newGrantedAuthorityImpl('ROLE_2')])
+		assert !SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_1'), newGrantedAuthorityImpl('ROLE_2'), newGrantedAuthorityImpl('ROLE_3')])
+		assert !SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_3')])
 	}
 
 	void testIfAllGranted_UsingHierarchy() {
 		initRoleHierarchy 'ROLE_3 > ROLE_2 \n ROLE_2 > ROLE_1'
 		SecurityTestUtils.authenticate(['ROLE_3'], true)
 
-		assertTrue SpringSecurityUtils.ifAllGranted('ROLE_1')
-		assertTrue SpringSecurityUtils.ifAllGranted('ROLE_2')
-		assertTrue SpringSecurityUtils.ifAllGranted('ROLE_1,ROLE_2')
-		assertTrue SpringSecurityUtils.ifAllGranted('ROLE_1,ROLE_2,ROLE_3')
-		assertTrue SpringSecurityUtils.ifAllGranted('ROLE_3')
-		assertFalse SpringSecurityUtils.ifAllGranted('ROLE_4')
-		
-		assertTrue SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_2')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2'), new SimpleGrantedAuthority('ROLE_3')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_3')])
-		assertFalse SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_4')])
-		
-		assertTrue SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_1')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_2')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_1'), new GrantedAuthorityImpl('ROLE_2')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_1'), new GrantedAuthorityImpl('ROLE_2'), new GrantedAuthorityImpl('ROLE_3')])
-		assertTrue SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_3')])
-		assertFalse SpringSecurityUtils.ifAllGranted([new GrantedAuthorityImpl('ROLE_4')])
+		assert SpringSecurityUtils.ifAllGranted('ROLE_1')
+		assert SpringSecurityUtils.ifAllGranted('ROLE_2')
+		assert SpringSecurityUtils.ifAllGranted('ROLE_1,ROLE_2')
+		assert SpringSecurityUtils.ifAllGranted('ROLE_1,ROLE_2,ROLE_3')
+		assert SpringSecurityUtils.ifAllGranted('ROLE_3')
+		assert !SpringSecurityUtils.ifAllGranted('ROLE_4')
+
+		assert SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1')])
+		assert SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_2')])
+		assert SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2')])
+		assert SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2'), new SimpleGrantedAuthority('ROLE_3')])
+		assert SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_3')])
+		assert !SpringSecurityUtils.ifAllGranted([new SimpleGrantedAuthority('ROLE_4')])
+
+		assert SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_1')])
+		assert SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_2')])
+		assert SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_1'), newGrantedAuthorityImpl('ROLE_2')])
+		assert SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_1'), newGrantedAuthorityImpl('ROLE_2'), newGrantedAuthorityImpl('ROLE_3')])
+		assert SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_3')])
+		assert !SpringSecurityUtils.ifAllGranted([newGrantedAuthorityImpl('ROLE_4')])
 	}
 
 	void testIfNotGranted() {
 		initRoleHierarchy ''
 		SecurityTestUtils.authenticate(['ROLE_1', 'ROLE_2'])
 
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_1')
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_2')
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_1,ROLE_2')
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_1,ROLE_2,ROLE_3')
-		assertTrue SpringSecurityUtils.ifNotGranted('ROLE_3')
-		
-		assertFalse SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_1')])
-		assertFalse SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_2')])
-		assertFalse SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2')])
-		assertFalse SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2'), new SimpleGrantedAuthority('ROLE_3')])
-		assertTrue SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_3')])
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_1')
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_2')
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_1,ROLE_2')
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_1,ROLE_2,ROLE_3')
+		assert SpringSecurityUtils.ifNotGranted('ROLE_3')
 
-		assertFalse SpringSecurityUtils.ifNotGranted([new GrantedAuthorityImpl('ROLE_1')])
-		assertFalse SpringSecurityUtils.ifNotGranted([new GrantedAuthorityImpl('ROLE_2')])
-		assertFalse SpringSecurityUtils.ifNotGranted([new GrantedAuthorityImpl('ROLE_1'), new GrantedAuthorityImpl('ROLE_2')])
-		assertFalse SpringSecurityUtils.ifNotGranted([new GrantedAuthorityImpl('ROLE_1'), new GrantedAuthorityImpl('ROLE_2'), new GrantedAuthorityImpl('ROLE_3')])
-		assertTrue SpringSecurityUtils.ifNotGranted([new GrantedAuthorityImpl('ROLE_3')])
+		assert !SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_1')])
+		assert !SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_2')])
+		assert !SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2')])
+		assert !SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_1'), new SimpleGrantedAuthority('ROLE_2'), new SimpleGrantedAuthority('ROLE_3')])
+		assert SpringSecurityUtils.ifNotGranted([new SimpleGrantedAuthority('ROLE_3')])
+
+		assert !SpringSecurityUtils.ifNotGranted([newGrantedAuthorityImpl('ROLE_1')])
+		assert !SpringSecurityUtils.ifNotGranted([newGrantedAuthorityImpl('ROLE_2')])
+		assert !SpringSecurityUtils.ifNotGranted([newGrantedAuthorityImpl('ROLE_1'), newGrantedAuthorityImpl('ROLE_2')])
+		assert !SpringSecurityUtils.ifNotGranted([newGrantedAuthorityImpl('ROLE_1'), newGrantedAuthorityImpl('ROLE_2'), newGrantedAuthorityImpl('ROLE_3')])
+		assert SpringSecurityUtils.ifNotGranted([newGrantedAuthorityImpl('ROLE_3')])
 	}
 
 	void testIfNotGranted_UsingHierarchy() {
 		initRoleHierarchy 'ROLE_3 > ROLE_2 \n ROLE_2 > ROLE_1'
 		SecurityTestUtils.authenticate(['ROLE_3'])
 
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_1')
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_2')
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_1,ROLE_2')
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_1,ROLE_2,ROLE_3')
-		assertFalse SpringSecurityUtils.ifNotGranted('ROLE_3')
-		assertTrue SpringSecurityUtils.ifNotGranted('ROLE_4')
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_1')
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_2')
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_1,ROLE_2')
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_1,ROLE_2,ROLE_3')
+		assert !SpringSecurityUtils.ifNotGranted('ROLE_3')
+		assert SpringSecurityUtils.ifNotGranted('ROLE_4')
 	}
 
 	void testIfAnyGranted() {
 		initRoleHierarchy ''
 		SecurityTestUtils.authenticate(['ROLE_1', 'ROLE_2'])
 
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_1')
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_2')
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_1,ROLE_2')
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_1,ROLE_2,ROLE_3')
-		assertFalse SpringSecurityUtils.ifAnyGranted('ROLE_3')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_1')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_2')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_1,ROLE_2')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_1,ROLE_2,ROLE_3')
+		assert !SpringSecurityUtils.ifAnyGranted('ROLE_3')
 	}
 
 	void testIfAnyGranted_UsingHierarchy() {
 		initRoleHierarchy 'ROLE_3 > ROLE_2 \n ROLE_2 > ROLE_1'
 		SecurityTestUtils.authenticate(['ROLE_3'])
 
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_1')
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_2')
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_1,ROLE_2')
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_1,ROLE_2,ROLE_3')
-		assertTrue SpringSecurityUtils.ifAnyGranted('ROLE_3')
-		assertFalse SpringSecurityUtils.ifAnyGranted('ROLE_4')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_1')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_2')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_1,ROLE_2')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_1,ROLE_2,ROLE_3')
+		assert SpringSecurityUtils.ifAnyGranted('ROLE_3')
+		assert !SpringSecurityUtils.ifAnyGranted('ROLE_4')
 	}
 
 	void testPrivateConstructor() {
@@ -280,64 +285,58 @@ class SpringSecurityUtilsTests extends GroovyTestCase {
 
 	void testGetSecurityConfigType() {
 		application.config.grails.plugin.springsecurity.securityConfigType = SecurityConfigType.Annotation
-		assertEquals 'Annotation', SpringSecurityUtils.securityConfigType
+		assert 'Annotation' == SpringSecurityUtils.securityConfigType
 
 		application.config.grails.plugin.springsecurity.securityConfigType = SecurityConfigType.Annotation.name()
-		assertEquals 'Annotation', SpringSecurityUtils.securityConfigType
+		assert 'Annotation' == SpringSecurityUtils.securityConfigType
 
 		application.config.grails.plugin.springsecurity.securityConfigType = 'Annotation'
-		assertEquals 'Annotation', SpringSecurityUtils.securityConfigType
+		assert 'Annotation' == SpringSecurityUtils.securityConfigType
 
 		application.config.grails.plugin.springsecurity.securityConfigType = SecurityConfigType.InterceptUrlMap
-		assertEquals 'InterceptUrlMap', SpringSecurityUtils.securityConfigType
+		assert 'InterceptUrlMap' == SpringSecurityUtils.securityConfigType
 
 		application.config.grails.plugin.springsecurity.securityConfigType = SecurityConfigType.InterceptUrlMap.name()
-		assertEquals 'InterceptUrlMap', SpringSecurityUtils.securityConfigType
+		assert 'InterceptUrlMap' == SpringSecurityUtils.securityConfigType
 
 		application.config.grails.plugin.springsecurity.securityConfigType = 'InterceptUrlMap'
-		assertEquals 'InterceptUrlMap', SpringSecurityUtils.securityConfigType
+		assert 'InterceptUrlMap' == SpringSecurityUtils.securityConfigType
 
 		application.config.grails.plugin.springsecurity.securityConfigType = SecurityConfigType.Requestmap
-		assertEquals 'Requestmap', SpringSecurityUtils.securityConfigType
+		assert 'Requestmap' == SpringSecurityUtils.securityConfigType
 
 		application.config.grails.plugin.springsecurity.securityConfigType = SecurityConfigType.Requestmap.name()
-		assertEquals 'Requestmap', SpringSecurityUtils.securityConfigType
+		assert 'Requestmap' == SpringSecurityUtils.securityConfigType
 
 		application.config.grails.plugin.springsecurity.securityConfigType = 'Requestmap'
-		assertEquals 'Requestmap', SpringSecurityUtils.securityConfigType
+		assert 'Requestmap' == SpringSecurityUtils.securityConfigType
 	}
 
 	/**
 	 * Check that two collections contain the same data, independent of collection class and order.
 	 */
 	private void assertSameContents(c1, c2) {
-		assertEquals c1.size(), c2.size()
-		assertTrue c1.containsAll(c2)
+		assert c1.size() == c2.size()
+		assert c1.containsAll(c2)
 	}
 
 	private void initRoleHierarchy(String hierarchy) {
 		def roleHierarchy = new RoleHierarchyImpl(hierarchy: hierarchy)
 		def ctx = [getBean: { String name -> roleHierarchy }, containsBean: { String name -> true }] as ApplicationContext
-		def application = new FakeApplication() {
-			public ApplicationContext getMainContext() {
-     		   return ctx;
-    		}
+		SpringSecurityUtils.application = new FakeApplication() {
+			ApplicationContext getMainContext() { ctx }
 		}
-		grails.util.Holders.setGrailsApplication(application)// = 
-		SpringSecurityUtils.application = application
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @see junit.framework.TestCase#tearDown()
-	 */
+	private GrantedAuthority newGrantedAuthorityImpl(String name) {
+		new org.springframework.security.core.authority.GrantedAuthorityImpl(name)
+	}
+
 	@Override
 	protected void tearDown() {
 		super.tearDown()
 		SecurityTestUtils.logout()
 		SpringSecurityUtils.resetSecurityConfig()
-		grails.util.Holders.setGrailsApplication(null) //= null
-		grails.util.Holders.setConfig(null)
 		SpringSecurityUtils.application = null
 		ReflectionUtils.application = null
 		SecurityRequestHolder.reset()

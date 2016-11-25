@@ -1,9 +1,5 @@
-
-<%@ page import="com.testapp.TestRole" %>
-<!DOCTYPE html>
 <html>
 	<head>
-		<meta name="layout" content="main">
 		<g:set var="entityName" value="${message(code: 'testRole.label', default: 'TestRole')}" />
 		<title><g:message code="default.list.label" args="[entityName]" /></title>
 	</head>
@@ -23,17 +19,13 @@
 			<table>
 			<thead>
 					<tr>
-					
 						<g:sortableColumn property="authority" title="${message(code: 'testRole.authority.label', default: 'Authority')}" />
-					
 					</tr>
 				</thead>
 				<tbody>
 				<g:each in="${testRoleInstanceList}" status="i" var="testRoleInstance">
 					<tr class="${(i % 2) == 0 ? 'even' : 'odd'}">
-					
 						<td><g:link action="show" id="${testRoleInstance.id}">${fieldValue(bean: testRoleInstance, field: "authority")}</g:link></td>
-					
 					</tr>
 				</g:each>
 				</tbody>

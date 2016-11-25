@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,11 +51,6 @@ public class MutableLogoutFilter extends LogoutFilter {
 		logoutSuccessHandler = successHandler;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.security.web.authentication.logout.LogoutFilter#doFilter(
-	 * 	javax.servlet.ServletRequest, javax.servlet.ServletResponse, javax.servlet.FilterChain)
-	 */
 	@Override
 	public void doFilter(final ServletRequest req, final ServletResponse res, final FilterChain chain)
 			throws IOException, ServletException {
@@ -63,23 +58,19 @@ public class MutableLogoutFilter extends LogoutFilter {
 		HttpServletRequest request = (HttpServletRequest) req;
 		HttpServletResponse response = (HttpServletResponse) res;
 
-		if (requiresLogout(request, response)) {
-			Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-			if (log.isDebugEnabled()) {
-				log.debug("Logging out user '{}' and transferring to logout destination", auth);
-			}
-
-			for (LogoutHandler handler : handlers) {
-				handler.logout(request, response, auth);
-			}
-
-			logoutSuccessHandler.onLogoutSuccess(request, response, auth);
-
+		if (!requiresLogout(request, response)) {
+			chain.doFilter(request, response);
 			return;
 		}
 
-		chain.doFilter(request, response);
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		log.debug("Logging out user '{}' and transferring to logout destination", auth);
+
+		for (LogoutHandler handler : handlers) {
+			handler.logout(request, response, auth);
+		}
+
+		logoutSuccessHandler.onLogoutSuccess(request, response, auth);
 	}
 
 	/**

@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,15 +33,15 @@ import org.springframework.security.core.Authentication;
  */
 public class AuthenticatedVetoableDecisionManager extends AbstractAccessDecisionManager {
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.security.access.AccessDecisionManager#decide(org.springframework.security.core.Authentication, java.lang.Object, java.util.Collection)
-	 */
 	public void decide(final Authentication authentication, final Object object, final Collection<ConfigAttribute> configAttributes)
 			throws AccessDeniedException, InsufficientAuthenticationException {
 
 		boolean authenticatedVotersGranted = checkAuthenticatedVoters(authentication, object, configAttributes);
 		boolean otherVotersGranted = checkOtherVoters(authentication, object, configAttributes);
+
+		if (logger.isTraceEnabled()) {
+			logger.trace("decide(): authenticatedVotersGranted=" + authenticatedVotersGranted + " otherVotersGranted=" + otherVotersGranted);
+		}
 
 		if (!authenticatedVotersGranted && !otherVotersGranted) {
 			checkAllowIfAllAbstainDecisions();

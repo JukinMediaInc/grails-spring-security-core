@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,38 +34,26 @@ public class AjaxAwareAuthenticationSuccessHandler extends SavedRequestAwareAuth
 	protected String ajaxSuccessUrl;
 	protected RequestCache requestCache;
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.security.web.authentication.AbstractAuthenticationTargetUrlRequestHandler#determineTargetUrl(
-	 * 	javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
-	 */
-	@Override
-	protected String determineTargetUrl(HttpServletRequest request, HttpServletResponse response) {
-		if (SpringSecurityUtils.isAjax(request)) {
-			return ajaxSuccessUrl;
-		}
-		return super.determineTargetUrl(request, response);
-	}
-
-	/**
-	 * Dependency injection for the Ajax success url, e.g. '/login/ajaxSuccess'
-	 * @param url the url
-	 */
-	public void setAjaxSuccessUrl(final String url) {
-		ajaxSuccessUrl = url;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler#onAuthenticationSuccess(
-	 * 	javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse,
-	 * 	org.springframework.security.core.Authentication)
-	 */
 	@Override
 	public void onAuthenticationSuccess(final HttpServletRequest request, final HttpServletResponse response,
 			final Authentication authentication) throws ServletException, IOException {
+
+		// GPSPRINGSECURITYCORE-240
+		if (SpringSecurityUtils.isAjax(request)) {
+			requestCache.removeRequest(request, response);
+		}
+
 		try {
-			super.onAuthenticationSuccess(request, response, authentication);
+			if (SpringSecurityUtils.isAjax(request)) {
+				clearAuthenticationAttributes(request);
+				if (logger.isDebugEnabled()) {
+					logger.debug("Redirecting to Ajax Success Url: " + ajaxSuccessUrl);
+				}
+				getRedirectStrategy().sendRedirect(request, response, ajaxSuccessUrl);
+			}
+			else {
+				super.onAuthenticationSuccess(request, response, authentication);
+			}
 		}
 		finally {
 			// always remove the saved request
@@ -74,10 +62,13 @@ public class AjaxAwareAuthenticationSuccessHandler extends SavedRequestAwareAuth
 	}
 
 	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler#setRequestCache(
-	 * 	org.springframework.security.web.savedrequest.RequestCache)
+	 * Dependency injection for the Ajax success url, e.g. '/login/ajaxSuccess'.
+	 * @param url the url
 	 */
+	public void setAjaxSuccessUrl(final String url) {
+		ajaxSuccessUrl = url;
+	}
+
 	@Override
 	public void setRequestCache(RequestCache cache) {
 		super.setRequestCache(cache);

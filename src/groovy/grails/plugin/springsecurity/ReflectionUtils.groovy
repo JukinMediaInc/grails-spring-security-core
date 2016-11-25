@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,7 +87,10 @@ class ReflectionUtils {
 	}
 
 	static List loadAllRequestmaps() {
-		getRequestMapClass().list()
+		def clazz = getRequestMapClass()
+		clazz.withTransaction {
+			clazz.list()
+		}
 	}
 
 	static boolean requestmapClassSupportsHttpMethod() {
@@ -127,7 +130,7 @@ class ReflectionUtils {
 		List<InterceptedUrl> split = []
 		m.each { String key, value ->
 			List tokens
-			if (value instanceof List<?> || value.getClass().array) {
+			if (value instanceof Collection || value.getClass().array) {
 				tokens = value*.toString()
 			}
 			else { // String/GString
@@ -145,20 +148,20 @@ class ReflectionUtils {
 		for (Map<String, Object> row : map) {
 
 			List tokens
-			def value = map.access
-			if (value instanceof List<?> || value.getClass().array) {
+			def value = row.access
+			if (value instanceof Collection || value.getClass().array) {
 				tokens = value*.toString()
 			}
 			else { // String/GString
 				tokens = [value.toString()]
 			}
 
-			def httpMethod = map.httpMethod
+			def httpMethod = row.httpMethod
 			if (httpMethod instanceof CharSequence) {
 				httpMethod = HttpMethod.valueOf(httpMethod)
 			}
 
-			split << new InterceptedUrl(map.pattern, tokens, httpMethod)
+			split << new InterceptedUrl(row.pattern, tokens, httpMethod)
 		}
 
 		split
@@ -190,7 +193,12 @@ class ReflectionUtils {
 			}
 		}
 
+		log.trace 'Built ConfigAttributes {} for tokens {}', configAttributes, tokens
 		configAttributes
+	}
+
+	static String getGrailsServerURL() {
+		getApplication().config.grails.serverURL ? application.config?.grails?.serverURL?.toString() : null
 	}
 
 	private static boolean supports(ConfigAttribute config, AccessDecisionVoter<?> voter) {
@@ -203,7 +211,7 @@ class ReflectionUtils {
 
 	private static GrailsApplication getApplication() {
 		if (!application) {
-			application = Holders.getGrailsApplication()
+			application = Holders.grailsApplication
 		}
 		application
 	}

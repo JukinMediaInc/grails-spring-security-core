@@ -1,6 +1,13 @@
 package ${packageName}
 
-class ${userClassName} {
+import groovy.transform.EqualsAndHashCode
+import groovy.transform.ToString
+
+@EqualsAndHashCode(includes='username')
+@ToString(includes='username', includeNames=true, includePackage=false)
+class ${userClassName} implements Serializable {
+
+	private static final long serialVersionUID = 1
 
 	transient springSecurityService
 
@@ -11,19 +18,14 @@ class ${userClassName} {
 	boolean accountLocked
 	boolean passwordExpired
 
-	static transients = ['springSecurityService']
-
-	static constraints = {
-		username blank: false, unique: true
-		password blank: false
-	}
-
-	static mapping = {
-		password column: '`password`'
+	${userClassName}(String username, String password) {
+		this()
+		this.username = username
+		this.password = password
 	}
 
 	Set<${groupClassName ?: roleClassName}> getAuthorities() {
-		${userClassName}${groupClassName ?: roleClassName}.findAllBy${userClassName}(this).collect { it.${groupClassProperty ?: roleClassProperty} }
+		${userClassName}${groupClassName ?: roleClassName}.findAllBy${userClassName}(this)*.${groupClassProperty ?: roleClassProperty}
 	}
 
 	def beforeInsert() {
@@ -38,5 +40,16 @@ class ${userClassName} {
 
 	protected void encodePassword() {
 		password = springSecurityService?.passwordEncoder ? springSecurityService.encodePassword(password) : password
+	}
+
+	static transients = ['springSecurityService']
+
+	static constraints = {
+		username blank: false, unique: true
+		password blank: false
+	}
+
+	static mapping = {
+		password column: '`password`'
 	}
 }

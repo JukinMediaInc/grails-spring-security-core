@@ -1,9 +1,5 @@
-
-<%@ page import="com.testapp.TestRequestmap" %>
-<!DOCTYPE html>
 <html>
 	<head>
-		<meta name="layout" content="main">
 		<g:set var="entityName" value="${message(code: 'testRequestmap.label', default: 'TestRequestmap')}" />
 		<title><g:message code="default.list.label" args="[entityName]" /></title>
 	</head>
@@ -23,25 +19,17 @@
 			<table>
 			<thead>
 					<tr>
-					
 						<g:sortableColumn property="url" title="${message(code: 'testRequestmap.url.label', default: 'Url')}" />
-					
 						<g:sortableColumn property="configAttribute" title="${message(code: 'testRequestmap.configAttribute.label', default: 'Config Attribute')}" />
-					
 						<g:sortableColumn property="httpMethod" title="${message(code: 'testRequestmap.httpMethod.label', default: 'Http Method')}" />
-					
 					</tr>
 				</thead>
 				<tbody>
 				<g:each in="${testRequestmapInstanceList}" status="i" var="testRequestmapInstance">
 					<tr class="${(i % 2) == 0 ? 'even' : 'odd'}">
-					
 						<td><g:link action="show" id="${testRequestmapInstance.id}">${fieldValue(bean: testRequestmapInstance, field: "url")}</g:link></td>
-					
 						<td>${fieldValue(bean: testRequestmapInstance, field: "configAttribute")}</td>
-					
 						<td>${fieldValue(bean: testRequestmapInstance, field: "httpMethod")}</td>
-					
 					</tr>
 				</g:each>
 				</tbody>

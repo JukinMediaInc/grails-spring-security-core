@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -187,18 +187,18 @@ class SecurityTagLib {
 		}
 	}
 
-    /**
-     * Provides a wrapper around the standard Grails link tag <code>g:link</code>.
-     * Renders the link if the user has access to the specified URL.
-     */
-    def link = { attrs, body ->
-        // retain original attributes for later, since hasAccess() removes ones necessary to create a link
-        def origAttrsMinusExpression = new HashMap(attrs)
-        origAttrsMinusExpression.remove('expression')
-        if (hasAccess(attrs, 'link')) {
-            out << g.link(origAttrsMinusExpression, body)
-        }
-    }
+	/**
+	 * Provides a wrapper around the standard Grails link tag <code>g:link</code>.
+	 * Renders the link if the user has access to the specified URL.
+	 */
+	def link = { attrs, body ->
+		// retain original attributes for later, since hasAccess() removes ones necessary to create a link
+		def origAttrsMinusExpression = [:] + attrs
+		origAttrsMinusExpression.remove 'expression'
+		if (hasAccess(attrs, 'link')) {
+			out << g.link(origAttrsMinusExpression, body)
+		}
+	}
 
 	/**
 	 * Renders the body if the specified expression (a String; the 'expression' attribute)
@@ -216,9 +216,10 @@ class SecurityTagLib {
 
 	protected boolean hasAccess(attrs, String tagName) {
 
-		if (!springSecurityService.isLoggedIn()) {
+		if (!springSecurityService.authentication?.authenticated) {
 			return false
 		}
+
 		def auth = springSecurityService.authentication
 		String expressionText = attrs.remove('expression')
 		if (expressionText) {
@@ -236,11 +237,11 @@ class SecurityTagLib {
 				throwTagError "Tag [$tagName] requires an expression, a URL, or controller/action/mapping attributes to create a URL"
 			}
 			if (mapping) {
-				url = g.createLink(mapping: mapping).toString()
+				url = g.createLink(mapping: mapping)
 			}
 			else {
 				String action = attrs.remove('action')
-				url = g.createLink(controller: controller, action: action, base: '/').toString()
+				url = g.createLink(controller: controller, action: action, base: '/')
 			}
 		}
 

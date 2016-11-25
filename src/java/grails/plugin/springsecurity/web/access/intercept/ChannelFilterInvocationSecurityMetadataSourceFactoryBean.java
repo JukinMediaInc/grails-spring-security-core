@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  */
 package grails.plugin.springsecurity.web.access.intercept;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -37,38 +38,24 @@ import org.springframework.util.Assert;
 public class ChannelFilterInvocationSecurityMetadataSourceFactoryBean
        implements FactoryBean<FilterInvocationSecurityMetadataSource>, InitializingBean {
 
+	protected static final Collection<String> SUPPORTED = Arrays.asList(
+			"ANY_CHANNEL", "REQUIRES_SECURE_CHANNEL", "REQUIRES_INSECURE_CHANNEL");
 	protected AntPathMatcher urlMatcher = new AntPathMatcher();
 	protected Map<String, String> definition;
 	protected DefaultFilterInvocationSecurityMetadataSource source;
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.beans.factory.FactoryBean#getObject()
-	 */
 	public FilterInvocationSecurityMetadataSource getObject() {
 		return source;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.beans.factory.FactoryBean#getObjectType()
-	 */
 	public Class<DefaultFilterInvocationSecurityMetadataSource> getObjectType() {
 		return DefaultFilterInvocationSecurityMetadataSource.class;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.beans.factory.FactoryBean#isSingleton()
-	 */
 	public boolean isSingleton() {
 		return true;
 	}
 
-	/**
-	 * {@inheritDoc}
-	 * @see org.springframework.beans.factory.InitializingBean#afterPropertiesSet()
-	 */
 	public void afterPropertiesSet() {
 		Assert.notNull(definition, "definition map is required");
 		Assert.notNull(urlMatcher, "urlMatcher is required");
@@ -85,9 +72,7 @@ public class ChannelFilterInvocationSecurityMetadataSourceFactoryBean
 			}
 			value = value.trim();
 
-			if (!"ANY_CHANNEL".equals(value) &&
-					!"REQUIRES_SECURE_CHANNEL".equals(value) &&
-					!"REQUIRES_INSECURE_CHANNEL".equals(value)) {
+			if (!SUPPORTED.contains(value) ) {
 				throw new IllegalArgumentException("The rule for URL '" + value +
 						"' must be one of REQUIRES_SECURE_CHANNEL, REQUIRES_INSECURE_CHANNEL, or ANY_CHANNEL");
 			}

@@ -1,4 +1,4 @@
-/* Copyright 2006-2014 SpringSource.
+/* Copyright 2006-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,38 @@ package test
 /**
  * @author <a href='mailto:burt@burtbeckwith.com'>Burt Beckwith</a>
  */
-class TestRole {
+class TestRole implements Serializable {
+
+	private static final long serialVersionUID = 1
 
 	String auth
 	String description
 
+	TestRole(String auth) {
+		this()
+		this.auth = auth
+	}
+
+	@Override
+	int hashCode() {
+		auth?.hashCode() ?: 0
+	}
+
+	@Override
+	boolean equals(other) {
+		is(other) || (other instanceof TestRole && other.auth == auth)
+	}
+
+	@Override
+	String toString() {
+		auth
+	}
+
 	static constraints = {
 		auth blank: false, unique: true
+	}
+
+	static mapping = {
+		cache true
 	}
 }
