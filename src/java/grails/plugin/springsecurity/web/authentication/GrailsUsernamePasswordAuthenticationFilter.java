@@ -43,7 +43,7 @@ public class GrailsUsernamePasswordAuthenticationFilter extends UsernamePassword
 			// Place the last username attempted into HttpSession for views
 			HttpSession session = request.getSession(false);
 			if (session == null && getAllowSessionCreation()) {
-				session = request.getSession();
+				session = request.getSession(false);
 			}
 
 			if (session != null) {
