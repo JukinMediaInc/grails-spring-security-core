@@ -135,6 +135,8 @@ class SpringSecurityCoreGrailsPlugin {
 	final Logger log = LoggerFactory.getLogger('grails.plugin.springsecurity.SpringSecurityCoreGrailsPlugin')
 
     String version = '2.0.0.jukin-SNAPSHOT'
+	def dependsOn = [webxml : "1.4.1 > *", ]
+
 	String grailsVersion = '2.5.1 > *'
 	List observe = ['controllers']
 	List loadAfter = ['controllers', 'hibernate', 'hibernate4', 'hibernate5', 'services']
