@@ -24,6 +24,6 @@ grails.project.dependency.resolution = {
 
 	plugins {
 		runtime ':spring-security-core:2.0.0'
-		runtime ':hibernate4:4.3.5.4'
+		runtime ':hibernate4:4.3.10'
 	}
 }
