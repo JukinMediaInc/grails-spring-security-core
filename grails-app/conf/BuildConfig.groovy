@@ -42,6 +42,8 @@ grails.project.dependency.resolution = {
 		}
 
 		compile 'net.sf.ehcache:ehcache:2.9.0'
+
+		test "org.spockframework:spock-core:1.0-groovy-2.4"
 	}
 
 	plugins {

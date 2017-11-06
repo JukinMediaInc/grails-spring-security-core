@@ -30,6 +30,7 @@ grails.project.dependency.resolution = {
 			transitive = false
 		}
 		test "org.gebish:geb-spock:$gebVersion"
+		compile "org.spockframework:spock-core:1.0-groovy-2.4"
 	}
 
 	plugins {
