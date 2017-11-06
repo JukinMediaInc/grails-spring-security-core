@@ -9,6 +9,7 @@ dataSource {
 hibernate {
 	cache.use_second_level_cache = true
 	cache.use_query_cache = false
-	cache.region.factory_class = 'org.hibernate.cache.ehcache.EhCacheRegionFactory'
+	cache.region.factory_class = 'org.hibernate.cache.ehcache.EhCacheRegionFactory' // Hibernate 4
+	cache.provider_class = 'grails.plugin.cache.ehcache.hibernate.GrailsEhCacheManagerFactoryBean'
 	singleSession = true
 }
