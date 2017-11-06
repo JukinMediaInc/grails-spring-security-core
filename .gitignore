@@ -15,3 +15,4 @@ cobertura.ser
 target
 target-eclipse
 /web-app
+.slcache/
