@@ -51,7 +51,10 @@ grails.project.dependency.resolution = {
 			export = false
 		}
 
-		compile ':hibernate:3.6.10.14', {
+//		compile ':hibernate:3.6.10.14', {
+//			export = false
+//		}
+        compile ':hibernate4:4.3.5.4', {
 			export = false
 		}
 	}
