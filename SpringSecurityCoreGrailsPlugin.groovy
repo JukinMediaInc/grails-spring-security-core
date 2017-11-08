@@ -139,7 +139,7 @@ class SpringSecurityCoreGrailsPlugin {
 
 	String grailsVersion = '2.5.1 > *'
 	List observe = ['controllers']
-	List loadAfter = ['controllers', 'hibernate', 'hibernate4', 'hibernate5', 'services']
+	List loadAfter = ['controllers', 'hibernate', 'hibernate4', 'hibernate5', 'services', 'webxml']
 	List pluginExcludes = [
 		'docs/**',
 		'grails-app/domain/**',
