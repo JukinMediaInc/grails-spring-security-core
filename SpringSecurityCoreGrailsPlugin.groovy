@@ -134,7 +134,7 @@ class SpringSecurityCoreGrailsPlugin {
 
 	final Logger log = LoggerFactory.getLogger('grails.plugin.springsecurity.SpringSecurityCoreGrailsPlugin')
 
-    String version = '2.0.0.jukin-SNAPSHOT'
+    String version = '2.0.0.jukin'
 	def dependsOn = [webxml : "1.4.1 > *", ]
 
 	String grailsVersion = '2.5.1 > *'
